@@ -1,12 +1,9 @@
 package net.minermen;
 
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -24,6 +21,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 import java.util.Scanner;
 
 import java.util.Set;
@@ -50,9 +49,9 @@ public class GlobalData extends JavaPlugin {
         filepath = this.getCustomConfig().getString("directory_path");
         objectiveName = this.getCustomConfig().getString("objectives");
 
-        int storedScore = getScoreFromFile();
+        // int storedScore = getScoreFromFile();
         // scoreboard.setScore(playername, storedScore);
-        setPlayerScore(storedScore);
+        // setPlayerScore(storedScore);
 
         startTick();
 
@@ -124,6 +123,8 @@ public class GlobalData extends JavaPlugin {
                 getLogger().info("value changed");
             }
         }
+
+        writeScoreToFile();
         
         // if (currentScore != storedScore) {
         //     storedScore = currentScore;
@@ -138,22 +139,6 @@ public class GlobalData extends JavaPlugin {
         // }
 
         // scoreboard.setScore(playername, storedScore);
-    }
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("send")) {
-            getLogger().info("command used");
-
-            if (sender instanceof Player) {
-                // Player player = (Player) sender;
-                // player.sendMessage("Hello, " + player.getName() + "!");
-
-                // getLogger().info(player.getName());
-                getLogger().info((Integer.toString(getPlayerScore("underminerman"))));
-            }
-        }
-        return false;
     }
 
     private Set<String> getPlayers() {
@@ -196,14 +181,31 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    private void writeScoreToFile(String data) {
-        try {
-            FileWriter myWriter = new FileWriter(filepath);
-            myWriter.write(data);
-            myWriter.close();
-            // System.out.println("Successfully wrote to the file.");
+    @SuppressWarnings("unchecked")
+    private void writeScoreToFile() {
+        JSONObject scoresDetails = new JSONObject();
+        
+        JSONArray objectiveNames = new JSONArray();
+        objectiveNames.add(objectiveName);
+        scoresDetails.put("objective_names",objectiveNames);
+
+        JSONObject board = new JSONObject();
+        for (String player : getPlayers()) {
+            board.put(player,getPlayerScore(player));
+        }
+
+        JSONObject objectives = new JSONObject();
+
+        objectives.put(objectiveName,board);
+
+        scoresDetails.put("objectives",objectives);
+
+        try (FileWriter file = new FileWriter(filepath)) {
+            //We can write any JSONArray or JSONObject instance to the file
+            file.write(scoresDetails.toJSONString()); 
+            file.flush();
+ 
         } catch (IOException e) {
-            getLogger().warning("An fileWrite error occurred.");
             e.printStackTrace();
         }
     }
