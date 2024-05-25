@@ -26,6 +26,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 public class GlobalData extends JavaPlugin {
 
@@ -34,7 +38,7 @@ public class GlobalData extends JavaPlugin {
 
     private String filepath;
     private String objectiveName;
-    private String playername = "underminerman";
+    // private String playername = "underminerman";
 
     // private int storedScore = 0;
     ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
@@ -47,7 +51,7 @@ public class GlobalData extends JavaPlugin {
         objectiveName = this.getCustomConfig().getString("objectives");
 
         int storedScore = getScoreFromFile();
-        scoreboard.setScore(playername, storedScore);
+        // scoreboard.setScore(playername, storedScore);
         setPlayerScore(storedScore);
 
         startTick();
@@ -96,25 +100,44 @@ public class GlobalData extends JavaPlugin {
     
 
     private void tick() {
-        // Your code to run every tick
-        int currentScore = getPlayerScore(playername);
-        int sharedScore = getScoreFromFile();
 
-        int storedScore = scoreboard.getPlayerScore(playername);
+        Set<String> currentPlayers = getPlayers();
+        Set<String> storedPlayers = scoreboard.getPlayers();
+
+        Set<String> players = Stream.concat(currentPlayers.stream(), storedPlayers.stream())
+            .collect(Collectors.toSet());
+
+        for (String player : players) {
+            Integer currentScore = getPlayerScore(player);
+            Integer storedScore = scoreboard.getPlayerScore(player);
+
+            if (storedScore != currentScore) {
+                if (currentScore == null) {
+                    scoreboard.resetScore(player);
+                }
+                else {
+                    storedScore = currentScore;
+
+                    scoreboard.setScore(player, storedScore);
+                }
+
+                getLogger().info("value changed");
+            }
+        }
         
-        if (currentScore != storedScore) {
-            storedScore = currentScore;
-            getLogger().info("value changed");
-            writeScoreToFile(Integer.toString(currentScore));
-        }
-        else if (sharedScore != storedScore) {
-            storedScore = sharedScore;
+        // if (currentScore != storedScore) {
+        //     storedScore = currentScore;
+        //     getLogger().info("value changed");
+        //     writeScoreToFile(Integer.toString(currentScore));
+        // }
+        // else if (sharedScore != storedScore) {
+        //     storedScore = sharedScore;
 
-            getLogger().info("value changed from storage");
-            setPlayerScore(storedScore);
-        }
+        //     getLogger().info("value changed from storage");
+        //     setPlayerScore(storedScore);
+        // }
 
-        scoreboard.setScore(playername, storedScore);
+        // scoreboard.setScore(playername, storedScore);
     }
 
     @Override
@@ -133,7 +156,14 @@ public class GlobalData extends JavaPlugin {
         return false;
     }
 
-    private int getPlayerScore(String playerName) {
+    private Set<String> getPlayers() {
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        Scoreboard board = manager.getMainScoreboard();
+
+        return board.getEntries();
+    }
+
+    private Integer getPlayerScore(String playerName) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
@@ -147,7 +177,7 @@ public class GlobalData extends JavaPlugin {
         } else {
             getLogger().warning("ScoreboardManager is null!");
         }
-        return 0;
+        return null;
     }
 
     private void setPlayerScore(int scoreValue) {
