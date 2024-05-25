@@ -1,0 +1,14 @@
+name: GlobalData
+main: net.minermen.GlobalData
+version: 1.0
+api-version: 1.20
+description: This is a sample plugin.
+author: Nathan Underminerman
+
+commands:
+  send:
+    description: Sends a message
+    usage: /send message
+  rj:
+    description: Sends a message
+    usage: /rj

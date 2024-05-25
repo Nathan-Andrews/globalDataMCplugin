@@ -1,0 +1,4 @@
+objectives: "global"
+
+# path to the shared storage directory
+directory_path: "/Users/nathanandrews/Desktop/minecraft-plugins/test-network/velocity/data.txt"
