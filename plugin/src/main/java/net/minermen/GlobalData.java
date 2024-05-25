@@ -34,8 +34,10 @@ public class GlobalData extends JavaPlugin {
 
     private String filepath;
     private String objectiveName;
+    private String playername = "underminerman";
 
-    private int storedScore = 0;
+    // private int storedScore = 0;
+    ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
 
     @Override
     public void onEnable() {
@@ -44,7 +46,8 @@ public class GlobalData extends JavaPlugin {
         filepath = this.getCustomConfig().getString("directory_path");
         objectiveName = this.getCustomConfig().getString("objectives");
 
-        storedScore = getScoreFromFile();
+        int storedScore = getScoreFromFile();
+        scoreboard.setScore(playername, storedScore);
         setPlayerScore(storedScore);
 
         startTick();
@@ -94,9 +97,10 @@ public class GlobalData extends JavaPlugin {
 
     private void tick() {
         // Your code to run every tick
-        // Bukkit.getLogger().info("Running task every tick");
-        int currentScore = getPlayerScore("underminerman");
+        int currentScore = getPlayerScore(playername);
         int sharedScore = getScoreFromFile();
+
+        int storedScore = scoreboard.getPlayerScore(playername);
         
         if (currentScore != storedScore) {
             storedScore = currentScore;
@@ -109,6 +113,8 @@ public class GlobalData extends JavaPlugin {
             getLogger().info("value changed from storage");
             setPlayerScore(storedScore);
         }
+
+        scoreboard.setScore(playername, storedScore);
     }
 
     @Override
