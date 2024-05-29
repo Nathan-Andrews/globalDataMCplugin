@@ -1,4 +1,14 @@
-objectives: "global"
+## the scoreboards which are shared between servers
+## can be formatted as a string, or a regex pattern :
+##
+#### `objectives: "global"`
+###### shares only the scoreboard named `global`
+##
+#### objectives: "^global.*"
+###### shares any scoreboard starting with `global`.  Ex: global_islandfall_wins
+#### objectives: ^(global.*|coins)$
+###### shares any scoreboard starting with `global`, as well as the exact scoreboard `coins`
+objectives: "^global.*"
 
 # path to the shared storage directory
 directory_path: "/Users/nathanandrews/Desktop/minecraft-plugins/test-network/velocity/data.txt"
