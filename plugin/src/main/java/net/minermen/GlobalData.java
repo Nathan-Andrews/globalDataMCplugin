@@ -22,13 +22,19 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,7 +62,7 @@ public class GlobalData extends JavaPlugin {
     // private String playername = "underminerman";
 
     // private int storedScore = 0;
-    ScoreboardStorage scoreboard = new ScoreboardStorage(objectivePattern);
+    private Hashtable<String,ScoreboardStorage> scoreboards;
 
     JSONObject sharedStorageJson;
 
@@ -65,16 +71,38 @@ public class GlobalData extends JavaPlugin {
         createCustomConfig();
 
         filepath = this.getCustomConfig().getString("directory_path");
+        String filename = this.getCustomConfig().getString("storage_filename");
         objectivePattern = this.getCustomConfig().getString("objectives");
 
+        if (filepath.equals("") || filename.equals("")) {
+            getLogger().severe("Set a filepath for storage in the config file: ./plugins/GlobalData/config.yml");
+
+            disablePlugin();
+            return;
+        }
+
+        filepath = Paths.get(filepath, "GlobalData", filename).toString();
+
+        System.out.println(filepath);
+
         objectives = new HashSet<String>();
-        objectives.add("global");
+
+        scoreboards = new Hashtable<String,ScoreboardStorage>();
+
+        getSharedStorage();
+
+        getTrackedObjectives();
+
+        for (String objective : objectives) {
+            ScoreboardStorage scoreboard = new ScoreboardStorage(objective);
+
+            scoreboards.put(objective,scoreboard);
+        }
 
         // int storedScore = getScoreFromFile();
         // scoreboard.setScore(playername, storedScore);
         // setPlayerScore(storedScore);
 
-        getSharedStorage();
         saveSharedStorage();
 
         startTick();
@@ -85,6 +113,10 @@ public class GlobalData extends JavaPlugin {
     @Override
     public void onDisable() {
         getLogger().info("GlobalData plugin has been disabled.");
+    }
+
+    private void disablePlugin() {
+        Bukkit.getServer().getPluginManager().disablePlugin(this);
     }
 
     private void startTick() {
@@ -121,12 +153,20 @@ public class GlobalData extends JavaPlugin {
     private void tick() {
         boolean valueChanged = false;
 
+        getTrackedObjectives();
+
         getSharedStorage();
 
         for (String objectiveName : objectives) {
-            Set<String> currentPlayers = getPlayers();
+            ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
+            if (scoreboard == null) {
+                scoreboard = new ScoreboardStorage(objectiveName);
+                scoreboards.put(objectiveName,scoreboard);
+            }
+
+            Set<String> currentPlayers = getPlayers(objectiveName);
             Set<String> storedPlayers = scoreboard.getPlayers();
-            Set<String> sharedPlayers = getSharedPlayers();
+            Set<String> sharedPlayers = getSharedPlayers(objectiveName);
     
     
             Set<String> players = Stream.concat(Stream.concat(currentPlayers.stream(), storedPlayers.stream()),sharedPlayers.stream())
@@ -148,7 +188,7 @@ public class GlobalData extends JavaPlugin {
                         scoreboard.setScore(player, storedScore);
                     }
     
-                    getLogger().info("value changed");
+                    // getLogger().info("value changed");
     
                     valueChanged = true;
                 }
@@ -166,7 +206,7 @@ public class GlobalData extends JavaPlugin {
                         setPlayerScore(objectiveName,player,storedScore);
                     }
     
-                    getLogger().info("value changed server");
+                    // getLogger().info("value changed server");
                 }
             }
         }
@@ -174,11 +214,24 @@ public class GlobalData extends JavaPlugin {
         if (valueChanged) {writeSharedStorage();}
     }
 
-    private Set<String> getPlayers() {
+    private Set<String> getPlayers(String objectiveName) {
+        Set<String> players = new HashSet<>();
+
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         Scoreboard board = manager.getMainScoreboard();
+        Objective objective = board.getObjective(objectiveName);
 
-        return board.getEntries();
+        if (objective != null) {
+            // Get all entries (players/teams) that have scores in this objective
+            for (String entry : board.getEntries()) {
+                Score score = objective.getScore(entry);
+                if (score.isScoreSet()) {
+                    players.add(entry);
+                }
+            }
+        }
+
+        return players;
     }
 
     private Integer getPlayerScore(String objectiveName, String playerName) {
@@ -191,7 +244,7 @@ public class GlobalData extends JavaPlugin {
                 if (! score.isScoreSet()) return null;
                 return score.getScore();
             } else {
-                getLogger().warning("Objective 'global' not found!");
+                getLogger().warning(String.format("Objective %1$s not found!",objectiveName));
             }
         } else {
             getLogger().warning("ScoreboardManager is null!");
@@ -215,17 +268,28 @@ public class GlobalData extends JavaPlugin {
     }
 
     private void getTrackedObjectives() {
+        objectives.removeAll(objectives);
+
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
             // objectives.removeAll(objectives);
             for (Objective objective : board.getObjectives()) {
-                if (objective.getName().equals(objectivePattern)) {
-                    objectives.add(objective.getName());
-                }
+                objectives.add(objective.getName());
             }
+
+            Pattern pattern = Pattern.compile(objectivePattern, Pattern.CASE_INSENSITIVE);
+
+            // Use Stream API to filter the set
+            objectives = objectives.stream()
+                .filter(pattern.asPredicate())
+                .collect(Collectors.toSet());
         } else {
             getLogger().warning("ScoreboardManager is null!");
+        }
+
+        for (String objectiveName : getSharedObjectiveNames()) {
+            objectives.add(objectiveName);
         }
     }
 
@@ -251,6 +315,10 @@ public class GlobalData extends JavaPlugin {
         JSONArray objectiveNames = new JSONArray();
 
         for (String objectiveName : this.objectives) {
+            ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
+            if (scoreboard == null) {
+                scoreboard = new ScoreboardStorage(objectiveName);
+            }
             objectiveNames.add(objectiveName);
 
             JSONObject board = new JSONObject();
@@ -265,12 +333,21 @@ public class GlobalData extends JavaPlugin {
 
         scoresDetails.put("objectives",objectives);
 
-        try (FileWriter file = new FileWriter(filepath)) {
-            //We can write any JSONArray or JSONObject instance to the file
-            file.write(scoresDetails.toJSONString()); 
-            file.flush();
- 
-        } catch (IOException e) {
+        try {
+            Path path = Paths.get(filepath);
+
+            Files.createDirectories(path.getParent());
+
+            try (FileWriter file = new FileWriter(filepath)) {
+                //We can write any JSONArray or JSONObject instance to the file
+                file.write(scoresDetails.toJSONString()); 
+                file.flush();
+     
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -295,9 +372,9 @@ public class GlobalData extends JavaPlugin {
     }
 
     @SuppressWarnings("unchecked")
-    private Set<String> getSharedPlayers() {
+    private Set<String> getSharedPlayers(String objectiveName) {
         if ((JSONObject) sharedStorageJson.get("objectives") != null) {
-            JSONObject board = ((JSONObject) ((JSONObject) sharedStorageJson.get("objectives")).get(objectivePattern));
+            JSONObject board = ((JSONObject) ((JSONObject) sharedStorageJson.get("objectives")).get(objectiveName));
 
             if (board != null) {
                 return board.keySet();
@@ -329,14 +406,28 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    private void saveSharedStorage() {
-        Set<String> currentPlayers = getPlayers();
-        Set<String> sharedPlayers = getSharedPlayers();
+    @SuppressWarnings("unchecked")
+    private Set<String> getSharedObjectiveNames() {
+        Set<String> objectiveNames = new HashSet<String>();
 
+        if ((JSONArray) sharedStorageJson.get("objective_names") == null) return objectiveNames;
+
+        for (String s : ((Stream<String>) ((JSONArray) sharedStorageJson.get("objective_names")).stream()).collect(Collectors.toSet())) {
+            objectiveNames.add(s);
+        }
+
+        return objectiveNames;
+    }
+
+    private void saveSharedStorage() {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
             for (String objectiveName : objectives) {
+                Set<String> currentPlayers = getPlayers(objectiveName);
+                Set<String> sharedPlayers = getSharedPlayers(objectiveName);
+
+
                 Objective objective = board.getObjective(objectiveName);
                 if (objective == null) {
                     objective = board.registerNewObjective(objectiveName, Criteria.DUMMY, Component.text(objectiveName));
@@ -344,11 +435,16 @@ public class GlobalData extends JavaPlugin {
                 // Score score = objective.getScore(playerName);
                 // score.setScore(scoreValue);
 
+                ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
+
                 for (String player : sharedPlayers) { // update all the new scores from the shared storage on startup
                     Score score = objective.getScore(player);
-                    score.setScore(getSharedScore(objectiveName,player));
+                    Integer s = getSharedScore(objectiveName,player);
 
-                    scoreboard.setScore(player, getSharedScore(objectiveName,player));
+                    if (s != null) {
+                        score.setScore(getSharedScore(objectiveName,player));
+                        scoreboard.setScore(player, getSharedScore(objectiveName,player));
+                    }
                 }
 
                 Set<String> differenceSet = new HashSet<String>(currentPlayers);

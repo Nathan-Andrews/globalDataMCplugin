@@ -27,7 +27,8 @@ public class ScoreboardStorage {
         return scores.keySet();
     }
 
-    public void setScore(String playername, int score) {
+    public void setScore(String playername, Integer score) {
+
         scores.put(playername, Integer.valueOf(score));
     }
 

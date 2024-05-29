@@ -10,5 +10,14 @@
 ###### shares any scoreboard starting with `global`, as well as the exact scoreboard `coins`
 objectives: "^global.*"
 
-# path to the shared storage directory
-directory_path: "/Users/nathanandrews/Desktop/minecraft-plugins/test-network/velocity/data.txt"
+## path to the shared storage directory
+##
+#### directory_path: "C:\Users\BlackTemplar\Desktop\Minermen network"
+###### creates the directory C:\Users\BlackTemplar\Desktop\Minermen network\GlobalData
+directory_path: ""
+
+## name of the storage file
+##
+#### storage_filename: "scoreboard_data.obj"
+###### File stored in directory_path\GlobalData\scoreboard_data.obj to be accessed by servers on the network
+storage_filename: "scoreboard_data.obj"
