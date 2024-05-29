@@ -277,13 +277,6 @@ public class GlobalData extends JavaPlugin {
             for (Objective objective : board.getObjectives()) {
                 objectives.add(objective.getName());
             }
-
-            Pattern pattern = Pattern.compile(objectivePattern, Pattern.CASE_INSENSITIVE);
-
-            // Use Stream API to filter the set
-            objectives = objectives.stream()
-                .filter(pattern.asPredicate())
-                .collect(Collectors.toSet());
         } else {
             getLogger().warning("ScoreboardManager is null!");
         }
@@ -291,6 +284,12 @@ public class GlobalData extends JavaPlugin {
         for (String objectiveName : getSharedObjectiveNames()) {
             objectives.add(objectiveName);
         }
+
+        Pattern pattern = Pattern.compile(objectivePattern, Pattern.CASE_INSENSITIVE);
+
+        objectives = objectives.stream()
+            .filter(pattern.asPredicate())
+            .collect(Collectors.toSet());
     }
 
     private void resetScore(String objectiveName,String playerName) {
@@ -447,11 +446,13 @@ public class GlobalData extends JavaPlugin {
                     }
                 }
 
-                Set<String> differenceSet = new HashSet<String>(currentPlayers);
-                differenceSet.removeAll(sharedPlayers);
-                for (String player : differenceSet) { // remove scores that don't exist in storage
-                    Score score = objective.getScore(player);
-                    score.resetScore();
+                if (getSharedObjectiveNames().contains(objectiveName)) {
+                    Set<String> differenceSet = new HashSet<String>(currentPlayers);
+                    differenceSet.removeAll(sharedPlayers);
+                    for (String player : differenceSet) { // remove scores that don't exist in storage
+                        Score score = objective.getScore(player);
+                        score.resetScore();
+                    }
                 }
             }
         } else {
