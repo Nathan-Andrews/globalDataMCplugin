@@ -12,7 +12,7 @@ objectives: "^global.*"
 
 ## path to the shared storage directory
 ##
-#### directory_path: "C:\Users\BlackTemplar\Desktop\Minermen network"
+#### directory_path: "C:\\Users\\BlackTemplar\\Desktop\\Minermen network"
 ###### creates the directory C:\Users\BlackTemplar\Desktop\Minermen network\GlobalData
 directory_path: ""
 

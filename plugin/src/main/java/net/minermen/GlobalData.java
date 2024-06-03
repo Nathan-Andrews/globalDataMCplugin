@@ -74,7 +74,7 @@ public class GlobalData extends JavaPlugin {
         String filename = this.getCustomConfig().getString("storage_filename");
         objectivePattern = this.getCustomConfig().getString("objectives");
 
-        if (filepath.equals("") || filename.equals("")) {
+        if (filepath == null || filename.equals("")) {
             getLogger().severe("Set a filepath for storage in the config file: ./plugins/GlobalData/config.yml");
 
             disablePlugin();
@@ -259,6 +259,7 @@ public class GlobalData extends JavaPlugin {
             Objective objective = board.getObjective(objectiveName);
             if (objective == null) {
                 objective = board.registerNewObjective(objectiveName, Criteria.DUMMY, Component.text(objectiveName));
+                // objective = board.registerNewObjective(objectiveName, "dummy", Component.text(objectiveName)); // 1.18.1 method
             }
             Score score = objective.getScore(playerName);
             score.setScore(scoreValue);
@@ -299,6 +300,7 @@ public class GlobalData extends JavaPlugin {
             Objective objective = board.getObjective(objectiveName);
             if (objective == null) {
                 objective = board.registerNewObjective(objectiveName, Criteria.DUMMY, Component.text(objectiveName));
+                // objective = board.registerNewObjective(objectiveName, "dummy", Component.text(objectiveName)); // 1.18.1 method
             }
             Score score = objective.getScore(playerName);
             score.resetScore();;
@@ -430,6 +432,7 @@ public class GlobalData extends JavaPlugin {
                 Objective objective = board.getObjective(objectiveName);
                 if (objective == null) {
                     objective = board.registerNewObjective(objectiveName, Criteria.DUMMY, Component.text(objectiveName));
+                    // objective = board.registerNewObjective(objectiveName, "dummy", Component.text(objectiveName)); // 1.18.1 method
                 }
                 // Score score = objective.getScore(playerName);
                 // score.setScore(scoreValue);
