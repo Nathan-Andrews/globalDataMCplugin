@@ -11,6 +11,14 @@ public class ScoreboardStorage {
         this.objective = objective;
     }
 
+    ScoreboardStorage(ScoreboardStorage other) { // copy constructor
+        this.objective = other.objective;
+
+        for (String player : other.getPlayers()) {
+            this.setScore(player, other.getPlayerScore(player));
+        }
+    }
+
     public String getObjective() {
         return objective;
     }

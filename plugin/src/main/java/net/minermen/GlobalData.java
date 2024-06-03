@@ -58,13 +58,15 @@ public class GlobalData extends JavaPlugin {
 
     private String filepath;
     private String objectivePattern;
-    private Set<String> objectives;
+    // private Set<String> objectives;
     // private String playername = "underminerman";
 
     // private int storedScore = 0;
-    private Hashtable<String,ScoreboardStorage> scoreboards;
+    private Hashtable<String,ScoreboardStorage> storedScoreboards;
+    private Hashtable<String,ScoreboardStorage> sharedScoreboards;
+    private Hashtable<String,ScoreboardStorage> currentScoreboards;
 
-    JSONObject sharedStorageJson;
+    // JSONObject sharedStorageJson;
 
     @Override
     public void onEnable() {
@@ -85,23 +87,18 @@ public class GlobalData extends JavaPlugin {
 
         System.out.println(filepath);
 
-        objectives = new HashSet<String>();
+        storedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
-        scoreboards = new Hashtable<String,ScoreboardStorage>();
+        getCurrentScoreboard();
+        getSharedScoreboards();
 
-        getSharedStorage();
-
-        getTrackedObjectives();
+        Set<String> objectives = getObjectiveNames();
 
         for (String objective : objectives) {
             ScoreboardStorage scoreboard = new ScoreboardStorage(objective);
 
-            scoreboards.put(objective,scoreboard);
+            storedScoreboards.put(objective,scoreboard);
         }
-
-        // int storedScore = getScoreFromFile();
-        // scoreboard.setScore(playername, storedScore);
-        // setPlayerScore(storedScore);
 
         saveSharedStorage();
 
@@ -153,60 +150,64 @@ public class GlobalData extends JavaPlugin {
     private void tick() {
         boolean valueChanged = false;
 
-        getTrackedObjectives();
+        getSharedScoreboards();
+        getCurrentScoreboard();
 
-        getSharedStorage();
+        Set<String> objectiveNames = getObjectiveNames();
 
-        for (String objectiveName : objectives) {
-            ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
-            if (scoreboard == null) {
-                scoreboard = new ScoreboardStorage(objectiveName);
-                scoreboards.put(objectiveName,scoreboard);
+        for (String objectiveName : objectiveNames) {
+            ScoreboardStorage currentScoreboard = currentScoreboards.containsKey(objectiveName) ? currentScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
+            ScoreboardStorage storedScoreboard = storedScoreboards.get(objectiveName);
+            ScoreboardStorage sharedScoreboard = sharedScoreboards.containsKey(objectiveName) ? sharedScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
+            
+            if (storedScoreboard == null) {
+                storedScoreboard = new ScoreboardStorage(objectiveName);
+                storedScoreboards.put(objectiveName,storedScoreboard);
             }
 
-            Set<String> currentPlayers = getPlayers(objectiveName);
-            Set<String> storedPlayers = scoreboard.getPlayers();
-            Set<String> sharedPlayers = getSharedPlayers(objectiveName);
+            Set<String> currentPlayers = currentScoreboard.getPlayers();
+            Set<String> storedPlayers = storedScoreboard.getPlayers();
+            Set<String> sharedPlayers = sharedScoreboard.getPlayers();
     
     
             Set<String> players = Stream.concat(Stream.concat(currentPlayers.stream(), storedPlayers.stream()),sharedPlayers.stream())
                 .collect(Collectors.toSet());
     
             for (String player : players) {
-                Integer currentScore = getPlayerScore(objectiveName,player);
-                Integer storedScore = scoreboard.getPlayerScore(player);
-                Integer sharedScore = getSharedScore(objectiveName,player);
+                Integer currentScore = currentScoreboard.getPlayerScore(player);
+                Integer storedScore = storedScoreboard.getPlayerScore(player);
+                Integer sharedScore = sharedScoreboard.getPlayerScore(player);
     
                 if (Utils.areNotEqual(storedScore, currentScore)) {
                     // getLogger().info(storedScore + ": " + currentScore);
                     if (currentScore == null) {
-                        scoreboard.resetScore(player);
+                        storedScoreboard.resetScore(player);
                     }
                     else {
                         storedScore = currentScore;
     
-                        scoreboard.setScore(player, storedScore);
+                        storedScoreboard.setScore(player, storedScore);
                     }
     
-                    // getLogger().info("value changed");
+                    getLogger().info("value changed");
     
                     valueChanged = true;
                 }
                 else if (Utils.areNotEqual(storedScore, sharedScore)) {
                     if (sharedScore == null) {
-                        resetScore(objectiveName,player);
-                        scoreboard.resetScore(player);
+                        resetPlayerScore(objectiveName,player);
+                        storedScoreboard.resetScore(player);
                     }
                     else {
                         // getLogger().info(storedScore + ", " + sharedScore);
                         storedScore = sharedScore;
     
-                        scoreboard.setScore(player, storedScore);
+                        storedScoreboard.setScore(player, storedScore);
     
                         setPlayerScore(objectiveName,player,storedScore);
                     }
     
-                    // getLogger().info("value changed server");
+                    getLogger().info("value changed server");
                 }
             }
         }
@@ -214,42 +215,119 @@ public class GlobalData extends JavaPlugin {
         if (valueChanged) {writeSharedStorage();}
     }
 
-    private Set<String> getPlayers(String objectiveName) {
-        Set<String> players = new HashSet<>();
+    @SuppressWarnings("unchecked")
+    private void getSharedScoreboards() {
+        JSONParser jsonParser = new JSONParser();
 
-        ScoreboardManager manager = Bukkit.getScoreboardManager();
-        Scoreboard board = manager.getMainScoreboard();
-        Objective objective = board.getObjective(objectiveName);
+        JSONObject sharedStorageJson = new JSONObject();
 
-        if (objective != null) {
-            // Get all entries (players/teams) that have scores in this objective
-            for (String entry : board.getEntries()) {
-                Score score = objective.getScore(entry);
-                if (score.isScoreSet()) {
-                    players.add(entry);
+        try (FileReader reader = new FileReader(filepath))
+        {
+            //Read JSON file
+            Object obj = jsonParser.parse(reader);
+ 
+            sharedStorageJson = (JSONObject) obj;
+
+            Set<String> objectiveNames = new HashSet<String>();
+
+            if ((JSONArray) sharedStorageJson.get("objective_names") != null) {
+                for (String s : ((Stream<String>) ((JSONArray) sharedStorageJson.get("objective_names")).stream()).collect(Collectors.toSet())) {
+                    objectiveNames.add(s);
                 }
             }
-        }
 
-        return players;
+
+            sharedScoreboards = new Hashtable<String,ScoreboardStorage>();
+
+            JSONObject objectives = (JSONObject) sharedStorageJson.get("objectives");
+
+            if (objectives == null) {
+                return;
+            }
+
+            for (String objectiveName : objectiveNames) {
+                if (! isTrackedObjective(objectiveName)) { continue; }
+
+                ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
+
+                JSONObject board = (JSONObject) objectives.get(objectiveName);
+
+                if (board == null) {
+                    continue;
+                }
+
+                Set<String> players = board.keySet();
+
+                for (String player : players) {
+                    Long s = (Long) board.get(player);
+                    if (s == null) { continue; }
+
+                    scoreboard.setScore(player, s.intValue());
+                }
+
+                sharedScoreboards.put(objectiveName,scoreboard);
+            }
+        }
+        catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
-    private Integer getPlayerScore(String objectiveName, String playerName) {
+    private void getCurrentScoreboard() {
+        currentScoreboards = new Hashtable<String,ScoreboardStorage>();
+
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
-            Objective objective = board.getObjective(objectiveName);
-            if (objective != null) {
-                Score score = objective.getScore(playerName);
-                if (! score.isScoreSet()) return null;
-                return score.getScore();
-            } else {
-                getLogger().warning(String.format("Objective %1$s not found!",objectiveName));
+            
+            Set<String> objectiveNames = new HashSet<String>();
+
+            for (Objective objective : board.getObjectives()) {
+                String objectiveName = objective.getName();
+                
+                if (isTrackedObjective(objectiveName)) objectiveNames.add(objective.getName());
             }
-        } else {
+
+
+            for (String objectiveName : objectiveNames) {
+                Objective objective = board.getObjective(objectiveName);
+
+                if (objective != null) {
+                    // Get all entries (players/teams) that have scores in this objective
+                    ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
+
+                    for (String entry : board.getEntries()) {
+                        Score score = objective.getScore(entry);
+                        if (! score.isScoreSet()) {
+                            continue;
+                        }
+
+                        scoreboard.setScore(entry, score.getScore());
+                    }
+
+                    currentScoreboards.put(objectiveName,scoreboard);
+                }
+            }
+        }
+        else {
             getLogger().warning("ScoreboardManager is null!");
         }
-        return null;
+    }
+
+    private boolean isTrackedObjective(String objectiveName) {
+        return Pattern.matches(objectivePattern,objectiveName);
+    }
+
+    private Set<String> getObjectiveNames() {
+        return Stream.concat(
+            Stream.concat(storedScoreboards.keySet().stream(),
+            sharedScoreboards.keySet().stream()),
+            currentScoreboards.keySet().stream())
+            .collect(Collectors.toSet());
     }
 
     private void setPlayerScore(String objectiveName, String playerName, int scoreValue) {
@@ -268,32 +346,8 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    private void getTrackedObjectives() {
-        objectives.removeAll(objectives);
 
-        ScoreboardManager manager = Bukkit.getScoreboardManager();
-        if (manager != null) {
-            Scoreboard board = manager.getMainScoreboard();
-            // objectives.removeAll(objectives);
-            for (Objective objective : board.getObjectives()) {
-                objectives.add(objective.getName());
-            }
-        } else {
-            getLogger().warning("ScoreboardManager is null!");
-        }
-
-        for (String objectiveName : getSharedObjectiveNames()) {
-            objectives.add(objectiveName);
-        }
-
-        Pattern pattern = Pattern.compile(objectivePattern, Pattern.CASE_INSENSITIVE);
-
-        objectives = objectives.stream()
-            .filter(pattern.asPredicate())
-            .collect(Collectors.toSet());
-    }
-
-    private void resetScore(String objectiveName,String playerName) {
+    private void resetPlayerScore(String objectiveName,String playerName) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
@@ -315,8 +369,8 @@ public class GlobalData extends JavaPlugin {
         JSONObject objectives = new JSONObject();
         JSONArray objectiveNames = new JSONArray();
 
-        for (String objectiveName : this.objectives) {
-            ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
+        for (String objectiveName : getObjectiveNames()) {
+            ScoreboardStorage scoreboard = storedScoreboards.get(objectiveName);
             if (scoreboard == null) {
                 scoreboard = new ScoreboardStorage(objectiveName);
             }
@@ -353,80 +407,19 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    private Integer getSharedScore(String objectiveName, String playername) {
-        JSONObject objectives = (JSONObject) sharedStorageJson.get("objectives");
-        if (objectives == null) {
-            return null;
-        }
-        else {
-            JSONObject board = (JSONObject) objectives.get(objectiveName);
-
-            if (board == null) {
-                return null;
-            }
-
-            else {
-                Long s = (Long) board.get(playername);
-                return s != null ? s.intValue() : null;
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Set<String> getSharedPlayers(String objectiveName) {
-        if ((JSONObject) sharedStorageJson.get("objectives") != null) {
-            JSONObject board = ((JSONObject) ((JSONObject) sharedStorageJson.get("objectives")).get(objectiveName));
-
-            if (board != null) {
-                return board.keySet();
-            }
-        }
-
-        return new HashSet<String>();
-    }
-
-    private void getSharedStorage() {
-
-        JSONParser jsonParser = new JSONParser();
-
-        sharedStorageJson = new JSONObject();
-
-        try (FileReader reader = new FileReader(filepath))
-        {
-            //Read JSON file
-            Object obj = jsonParser.parse(reader);
- 
-            sharedStorageJson = (JSONObject) obj;
-        }
-        catch (FileNotFoundException e) {
-            // e.printStackTrace();
-        } catch (IOException e) {
-            // e.printStackTrace();
-        } catch (ParseException e) {
-            // e.printStackTrace();
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Set<String> getSharedObjectiveNames() {
-        Set<String> objectiveNames = new HashSet<String>();
-
-        if ((JSONArray) sharedStorageJson.get("objective_names") == null) return objectiveNames;
-
-        for (String s : ((Stream<String>) ((JSONArray) sharedStorageJson.get("objective_names")).stream()).collect(Collectors.toSet())) {
-            objectiveNames.add(s);
-        }
-
-        return objectiveNames;
-    }
 
     private void saveSharedStorage() {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
+
+        Set<String> objectiveNames = getObjectiveNames();
         if (manager != null) {
             Scoreboard board = manager.getMainScoreboard();
-            for (String objectiveName : objectives) {
-                Set<String> currentPlayers = getPlayers(objectiveName);
-                Set<String> sharedPlayers = getSharedPlayers(objectiveName);
+            for (String objectiveName : objectiveNames) {
+                ScoreboardStorage currentScoreboard = currentScoreboards.containsKey(objectiveName) ? currentScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
+                ScoreboardStorage sharedScoreboard = sharedScoreboards.containsKey(objectiveName) ? sharedScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
+
+                Set<String> currentPlayers = currentScoreboard.getPlayers();
+                Set<String> sharedPlayers = sharedScoreboard.getPlayers();
 
 
                 Objective objective = board.getObjective(objectiveName);
@@ -437,19 +430,19 @@ public class GlobalData extends JavaPlugin {
                 // Score score = objective.getScore(playerName);
                 // score.setScore(scoreValue);
 
-                ScoreboardStorage scoreboard = scoreboards.get(objectiveName);
+                ScoreboardStorage scoreboard = storedScoreboards.get(objectiveName);
 
                 for (String player : sharedPlayers) { // update all the new scores from the shared storage on startup
                     Score score = objective.getScore(player);
-                    Integer s = getSharedScore(objectiveName,player);
+                    Integer s = sharedScoreboard.getPlayerScore(player);
 
                     if (s != null) {
-                        score.setScore(getSharedScore(objectiveName,player));
-                        scoreboard.setScore(player, getSharedScore(objectiveName,player));
+                        score.setScore(sharedScoreboard.getPlayerScore(player));
+                        scoreboard.setScore(player, sharedScoreboard.getPlayerScore(player));
                     }
                 }
 
-                if (getSharedObjectiveNames().contains(objectiveName)) {
+                if (sharedScoreboards.containsKey(objectiveName)) {
                     Set<String> differenceSet = new HashSet<String>(currentPlayers);
                     differenceSet.removeAll(sharedPlayers);
                     for (String player : differenceSet) { // remove scores that don't exist in storage
