@@ -68,18 +68,18 @@ public class GlobalData extends JavaPlugin {
         String filename = this.getCustomConfig().getString("storage_filename");
         objectivePattern = this.getCustomConfig().getString("objectives");
 
-        if (filepath == null || filename.equals("")) {
+        if (filepath == null || filepath.equals("") || filename == null || filename.equals("")) {
             getLogger().severe("Set a filepath for storage in the config file: ./plugins/GlobalData/config.yml");
 
             disablePlugin();
             return;
         }
 
-        filepath = Paths.get(filepath, "GlobalData", filename).toString();
+        filepath = Paths.get(filepath, "GlobalData").toString();
 
         System.out.println(filepath);
         
-        db.initialize(filepath);
+        db.initialize(filepath,filename);
 
         storedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
@@ -142,8 +142,6 @@ public class GlobalData extends JavaPlugin {
     
 
     private void tick() {
-        // boolean valueChanged = false;
-
         getSharedScoreboards();
         getCurrentScoreboard();
 
@@ -187,9 +185,7 @@ public class GlobalData extends JavaPlugin {
                         db.setPlayerScore(objectiveName, player, storedScore);
                     }
     
-                    getLogger().info("value changed");
-    
-                    // valueChanged = true;
+                    // getLogger().info("value changed");
                 }
                 else if (Utils.areNotEqual(storedScore, sharedScore)) {
                     if (sharedScore == null) {
@@ -205,12 +201,10 @@ public class GlobalData extends JavaPlugin {
                         setPlayerScore(objectiveName,player,storedScore);
                     }
     
-                    getLogger().info("value changed server");
+                    // getLogger().info("value changed server");
                 }
             }
         }
-
-        // if (valueChanged) {writeSharedStorage();}
     }
 
     private void getSharedScoreboards() {

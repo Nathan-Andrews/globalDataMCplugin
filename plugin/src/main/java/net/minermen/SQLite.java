@@ -14,6 +14,7 @@ public class SQLite {
 
     // Path to the shared database directory
     private String SHARED_DATABASE_PATH;
+    private String SHARED_DATABASE_FILE = "database.db";
 
     private String getDatabasePath() {
         // Ensure the directory exists
@@ -21,7 +22,7 @@ public class SQLite {
         if (!directory.exists()) {
             directory.mkdirs();
         }
-        return "jdbc:sqlite:" + new File(SHARED_DATABASE_PATH).getAbsolutePath();
+        return "jdbc:sqlite:" + new File(SHARED_DATABASE_PATH,SHARED_DATABASE_FILE).getAbsolutePath();
     }
 
     public Connection connect() {
@@ -36,8 +37,9 @@ public class SQLite {
         return conn;
     }
 
-    public void initialize(String path) {
+    public void initialize(String path,String filename) {
         SHARED_DATABASE_PATH = path;
+        SHARED_DATABASE_FILE = filename;
 
         // SQL statement for creating a new table
         String sql = "CREATE TABLE IF NOT EXISTS objectives (\n"
