@@ -18,6 +18,6 @@ directory_path: ""
 
 ## name of the storage file
 ##
-#### storage_filename: "scoreboard_data.obj"
-###### File stored in directory_path\GlobalData\scoreboard_data.obj to be accessed by servers on the network
-storage_filename: "scoreboard_data.obj"
+#### storage_filename: "database.db"
+###### File stored in directory_path\GlobalData\database.db to be accessed by servers on the network
+storage_filename: "database.db"

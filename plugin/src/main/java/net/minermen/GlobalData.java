@@ -58,6 +58,8 @@ public class GlobalData extends JavaPlugin {
 
     // JSONObject sharedStorageJson;
 
+    SQLite db = new SQLite();
+
     @Override
     public void onEnable() {
         createCustomConfig();
@@ -76,8 +78,8 @@ public class GlobalData extends JavaPlugin {
         filepath = Paths.get(filepath, "GlobalData", filename).toString();
 
         System.out.println(filepath);
-
-        SQLite.initialize();
+        
+        db.initialize(filepath);
 
         storedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
@@ -175,14 +177,14 @@ public class GlobalData extends JavaPlugin {
                     if (currentScore == null) {
                         storedScoreboard.resetScore(player);
 
-                        SQLite.resetPlayerScore(objectiveName, player);
+                        db.resetPlayerScore(objectiveName, player);
                     }
                     else {
                         storedScore = currentScore;
     
                         storedScoreboard.setScore(player, storedScore);
 
-                        SQLite.setPlayerScore(objectiveName, player, storedScore);
+                        db.setPlayerScore(objectiveName, player, storedScore);
                     }
     
                     getLogger().info("value changed");
@@ -212,7 +214,7 @@ public class GlobalData extends JavaPlugin {
     }
 
     private void getSharedScoreboards() {
-        Set<String> objectiveNames = SQLite.getObjectiveNames();
+        Set<String> objectiveNames = db.getObjectiveNames();
 
         sharedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
@@ -221,10 +223,10 @@ public class GlobalData extends JavaPlugin {
 
             ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
 
-            Set<String> players = SQLite.getPlayers(objectiveName);
+            Set<String> players = db.getPlayers(objectiveName);
 
             for (String player : players) {
-                Integer s = SQLite.getPlayerScore(objectiveName, player);
+                Integer s = db.getPlayerScore(objectiveName, player);
 
                 if (s != null) scoreboard.setScore(player, s.intValue());
             }
@@ -363,10 +365,7 @@ public class GlobalData extends JavaPlugin {
                 Objective objective = board.getObjective(objectiveName);
                 if (objective == null) {
                     objective = board.registerNewObjective(objectiveName, Criteria.DUMMY, Component.text(objectiveName));
-                    // objective = board.registerNewObjective(objectiveName, "dummy", Component.text(objectiveName)); // 1.18.1 method
                 }
-                // Score score = objective.getScore(playerName);
-                // score.setScore(scoreValue);
 
                 ScoreboardStorage scoreboard = storedScoreboards.get(objectiveName);
 

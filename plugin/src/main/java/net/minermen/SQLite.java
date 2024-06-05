@@ -13,18 +13,18 @@ import java.io.File;
 public class SQLite {
 
     // Path to the shared database directory
-    private static final String SHARED_DATABASE_PATH = "/Users/nathanandrews/Desktop/minecraft-plugins/test-network/velocity";
+    private String SHARED_DATABASE_PATH;
 
-    private static String getDatabasePath() {
+    private String getDatabasePath() {
         // Ensure the directory exists
         File directory = new File(SHARED_DATABASE_PATH);
         if (!directory.exists()) {
             directory.mkdirs();
         }
-        return "jdbc:sqlite:" + new File(SHARED_DATABASE_PATH, "database.db").getAbsolutePath();
+        return "jdbc:sqlite:" + new File(SHARED_DATABASE_PATH).getAbsolutePath();
     }
 
-    public static Connection connect() {
+    public Connection connect() {
         Connection conn = null;
         try {
             // Create a connection to the database
@@ -36,7 +36,9 @@ public class SQLite {
         return conn;
     }
 
-    public static void initialize() {
+    public void initialize(String path) {
+        SHARED_DATABASE_PATH = path;
+
         // SQL statement for creating a new table
         String sql = "CREATE TABLE IF NOT EXISTS objectives (\n"
                 + " id integer PRIMARY KEY,\n"
@@ -55,7 +57,7 @@ public class SQLite {
         }
     }
 
-    public static void printDatabase() {
+    public void printDatabase() {
         System.out.println("+--------------------+");
         Set<String> objectiveNames = getObjectiveNames();
 
@@ -69,7 +71,7 @@ public class SQLite {
         System.out.println("+--------------------+");
     }
 
-    public static Set<String> getObjectiveNames() {
+    public Set<String> getObjectiveNames() {
         String sql = "SELECT objective FROM objectives GROUP BY objective"; 
 
         Set<String> objectiveNames = new HashSet<String>();
@@ -89,7 +91,7 @@ public class SQLite {
         return objectiveNames;
     }
 
-    public static Set<String> getPlayers(String objective) {
+    public Set<String> getPlayers(String objective) {
         String sql = "SELECT player FROM objectives WHERE objective = ?";
 
         Set<String> playerNames = new HashSet<String>();
@@ -110,7 +112,7 @@ public class SQLite {
         return playerNames;
     }
 
-    public static Integer getPlayerScore(String objective, String player) {
+    public Integer getPlayerScore(String objective, String player) {
         String sql = "SELECT score FROM objectives WHERE objective = ? AND player = ?";
         
         try (Connection conn = connect();
@@ -132,7 +134,7 @@ public class SQLite {
         return null;
     }
 
-    public static void setPlayerScore(String objective, String player, int score) {
+    public void setPlayerScore(String objective, String player, int score) {
         String sql;
 
         Integer previousScore = getPlayerScore(objective, player);
@@ -157,7 +159,7 @@ public class SQLite {
         }
     }
 
-    public static void resetPlayerScore(String objective, String player) {
+    public void resetPlayerScore(String objective, String player) {
         String sql = "DELETE FROM objectives WHERE objective = ? AND player = ?";
 
         try (Connection conn = connect();
@@ -172,7 +174,7 @@ public class SQLite {
 
     }
 
-    public static void removeObjective(String objective) {
+    public void removeObjective(String objective) {
         String sql = "DELETE FROM objectives WHERE objective = ?";
 
         try (Connection conn = connect();
