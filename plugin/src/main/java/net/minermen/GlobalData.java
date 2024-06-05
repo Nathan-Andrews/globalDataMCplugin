@@ -18,18 +18,8 @@ import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.Objective;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -86,6 +76,8 @@ public class GlobalData extends JavaPlugin {
         filepath = Paths.get(filepath, "GlobalData", filename).toString();
 
         System.out.println(filepath);
+
+        SQLite.initialize();
 
         storedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
@@ -148,7 +140,7 @@ public class GlobalData extends JavaPlugin {
     
 
     private void tick() {
-        boolean valueChanged = false;
+        // boolean valueChanged = false;
 
         getSharedScoreboards();
         getCurrentScoreboard();
@@ -182,16 +174,20 @@ public class GlobalData extends JavaPlugin {
                     // getLogger().info(storedScore + ": " + currentScore);
                     if (currentScore == null) {
                         storedScoreboard.resetScore(player);
+
+                        SQLite.resetPlayerScore(objectiveName, player);
                     }
                     else {
                         storedScore = currentScore;
     
                         storedScoreboard.setScore(player, storedScore);
+
+                        SQLite.setPlayerScore(objectiveName, player, storedScore);
                     }
     
                     getLogger().info("value changed");
     
-                    valueChanged = true;
+                    // valueChanged = true;
                 }
                 else if (Utils.areNotEqual(storedScore, sharedScore)) {
                     if (sharedScore == null) {
@@ -212,68 +208,28 @@ public class GlobalData extends JavaPlugin {
             }
         }
 
-        if (valueChanged) {writeSharedStorage();}
+        // if (valueChanged) {writeSharedStorage();}
     }
 
-    @SuppressWarnings("unchecked")
     private void getSharedScoreboards() {
-        JSONParser jsonParser = new JSONParser();
+        Set<String> objectiveNames = SQLite.getObjectiveNames();
 
-        JSONObject sharedStorageJson = new JSONObject();
+        sharedScoreboards = new Hashtable<String,ScoreboardStorage>();
 
-        try (FileReader reader = new FileReader(filepath))
-        {
-            //Read JSON file
-            Object obj = jsonParser.parse(reader);
- 
-            sharedStorageJson = (JSONObject) obj;
+        for (String objectiveName : objectiveNames) {
+            if (! isTrackedObjective(objectiveName)) continue;
 
-            Set<String> objectiveNames = new HashSet<String>();
+            ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
 
-            if ((JSONArray) sharedStorageJson.get("objective_names") != null) {
-                for (String s : ((Stream<String>) ((JSONArray) sharedStorageJson.get("objective_names")).stream()).collect(Collectors.toSet())) {
-                    objectiveNames.add(s);
-                }
+            Set<String> players = SQLite.getPlayers(objectiveName);
+
+            for (String player : players) {
+                Integer s = SQLite.getPlayerScore(objectiveName, player);
+
+                if (s != null) scoreboard.setScore(player, s.intValue());
             }
 
-
-            sharedScoreboards = new Hashtable<String,ScoreboardStorage>();
-
-            JSONObject objectives = (JSONObject) sharedStorageJson.get("objectives");
-
-            if (objectives == null) {
-                return;
-            }
-
-            for (String objectiveName : objectiveNames) {
-                if (! isTrackedObjective(objectiveName)) { continue; }
-
-                ScoreboardStorage scoreboard = new ScoreboardStorage(objectiveName);
-
-                JSONObject board = (JSONObject) objectives.get(objectiveName);
-
-                if (board == null) {
-                    continue;
-                }
-
-                Set<String> players = board.keySet();
-
-                for (String player : players) {
-                    Long s = (Long) board.get(player);
-                    if (s == null) { continue; }
-
-                    scoreboard.setScore(player, s.intValue());
-                }
-
-                sharedScoreboards.put(objectiveName,scoreboard);
-            }
-        }
-        catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
+            sharedScoreboards.put(objectiveName,scoreboard);
         }
     }
 
@@ -346,6 +302,9 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
+    // private void setSharedScore(String objective,String playerName, int scoreValue) {
+
+    // }
 
     private void resetPlayerScore(String objectiveName,String playerName) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
@@ -363,50 +322,29 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void writeSharedStorage() {
-        JSONObject scoresDetails = new JSONObject();
-        JSONObject objectives = new JSONObject();
-        JSONArray objectiveNames = new JSONArray();
+    // private void writeSharedStorage() {
+    //     for (String objectiveName : getObjectiveNames()) {
+    //         ScoreboardStorage storedScoreboard = storedScoreboards.get(objectiveName);
+    //         ScoreboardStorage sharedScoreboard = sharedScoreboards.containsKey(objectiveName) ? sharedScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
 
-        for (String objectiveName : getObjectiveNames()) {
-            ScoreboardStorage scoreboard = storedScoreboards.get(objectiveName);
-            if (scoreboard == null) {
-                scoreboard = new ScoreboardStorage(objectiveName);
-            }
-            objectiveNames.add(objectiveName);
+    //         if (storedScoreboard == null) {
+    //             SQLite.removeObjective(objectiveName);
 
-            JSONObject board = new JSONObject();
-            for (String player : scoreboard.getPlayers()) {
-                board.put(player,scoreboard.getPlayerScore(player));
-            }
+    //             continue;
+    //             // scoreboard = new ScoreboardStorage(objectiveName);
+    //         }
 
-            objectives.put(objectiveName,board);
-        }
+    //         for (String player : storedScoreboard.getPlayers()) {
+    //             // board.put(player,storedScoreboard.getPlayerScore(player));
+    //             SQLite.setPlayerScore(objectiveName, player, storedScoreboard.getPlayerScore(player));
+    //         }
 
-        scoresDetails.put("objective_names",objectiveNames);
-
-        scoresDetails.put("objectives",objectives);
-
-        try {
-            Path path = Paths.get(filepath);
-
-            Files.createDirectories(path.getParent());
-
-            try (FileWriter file = new FileWriter(filepath)) {
-                //We can write any JSONArray or JSONObject instance to the file
-                file.write(scoresDetails.toJSONString()); 
-                file.flush();
-     
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
+    //         for (String player : Sets.difference(storedScoreboard.getPlayers(), sharedScoreboard.getPlayers())) {
+    //             SQLite.resetPlayerScore(objectiveName, player);
+    //         }
+    //     }
+    // }
+    
 
     private void saveSharedStorage() {
         ScoreboardManager manager = Bukkit.getScoreboardManager();

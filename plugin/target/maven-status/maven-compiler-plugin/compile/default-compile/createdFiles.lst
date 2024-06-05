@@ -1,4 +1,5 @@
 net/minermen/GlobalData$1.class
+net/minermen/SQLite.class
 net/minermen/ScoreboardStorage.class
-net/minermen/Utils.class
 net/minermen/GlobalData.class
+net/minermen/Utils.class
