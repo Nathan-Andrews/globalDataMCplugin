@@ -57,6 +57,21 @@ public class SQLite {
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
+
+
+        String sql2 = "CREATE TABLE IF NOT EXISTS objectivenames (\n"
+                + " id integer PRIMARY KEY,\n"
+                + " objective text PRIMARY KEY\n"
+                + ");";
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement()) {
+            // create a new table
+            stmt.execute(sql2);
+            System.out.println("Table has been created or already exists.");
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     public void printDatabase() {
@@ -74,7 +89,7 @@ public class SQLite {
     }
 
     public Set<String> getObjectiveNames() {
-        String sql = "SELECT objective FROM objectives GROUP BY objective"; 
+        String sql = "SELECT objective FROM objectivenames GROUP BY objective"; 
 
         Set<String> objectiveNames = new HashSet<String>();
 
@@ -91,6 +106,19 @@ public class SQLite {
         }
 
         return objectiveNames;
+    }
+
+    public void addObjective(String objective) {
+        String sql = "INSERT INTO objectivenames(objective) VALUES (?)";
+
+        try (Connection conn = connect();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1,objective);
+
+                pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     public Set<String> getPlayers(String objective) {
@@ -142,6 +170,10 @@ public class SQLite {
         Integer previousScore = getPlayerScore(objective, player);
         if (previousScore == null) {
             sql = "INSERT INTO objectives(score,objective,player) VALUES (?, ?, ?)";
+
+            if (!getObjectiveNames().contains(objective)) {
+                addObjective(objective);
+            }
         }
         else {
             sql = "UPDATE objectives SET score = ? WHERE objective = ? AND player = ?";
@@ -177,10 +209,21 @@ public class SQLite {
     }
 
     public void removeObjective(String objective) {
-        String sql = "DELETE FROM objectives WHERE objective = ?";
+        String sql = "DELETE FROM objectivenames WHERE objective = ?";
 
         try (Connection conn = connect();
             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1,objective);
+                
+                pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        String sql2 = "DELETE FROM objectives WHERE objective = ?";
+
+        try (Connection conn = connect();
+            PreparedStatement pstmt = conn.prepareStatement(sql2)) {
                 pstmt.setString(1,objective);
                 
                 pstmt.executeUpdate();
