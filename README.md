@@ -11,23 +11,23 @@ Contributing
 License
 
 ## Installation
-This is meant to be used on paper 1.20.4 servers.
-### Build
-Run `maven clean package` to build the project
-### Server
-Place the *.jar* file in the *./plugins/* directory of your minecraft server.
-Reload or restart the server
-### Config
-After reloading, a config file for the plugin will be created automatically in *./plugins/GlobalData/config.yml*.
-You need to set up the config to continue using the plugin
-**objectives: "..."** the scoreboards which are shared between servers.  Should be formatted as a regex pattern.
-**directory_path: "..."** path to the shared storage directory.  This is where your database will be stored.  Should be in a directory that all of the servers can access
-**storage_filename: "..."** the name of the database file.  Usually *database.db*
+- This is meant to be used on paper 1.20.4 servers.
+- ### Build
+    - Run `maven clean package` to build the project
+- ### Server
+    - Place the *.jar* file in the *./plugins/* directory of your minecraft server.
+    - Reload or restart the server
+- ### Config
+    - After reloading, a config file for the plugin will be created automatically in *./plugins/GlobalData/config.yml*.
+    - You need to set up the config to continue using the plugin
+    - `objectives: "..."` the scoreboards which are shared between servers.  Should be formatted as a regex pattern.
+    - `directory_path: "..."` path to the shared storage directory.  This is where your database will be stored.  Should be in a directory that all of the servers can access
+    - `storage_filename: "..."` the name of the database file.  Usually *database.db*
 
-Repeat for all servers you want to connect
+- Repeat for all servers you want to connect
 
 ## Features
-All objectives are stored in a SQLite database.  You can access it with the sqlite command line looks using `sqlite3 database.db`. 
+- All objectives are stored in a SQLite database.  You can access it with the sqlite command line looks using `sqlite3 database.db`. 
 
 ## Behaviors
 - Only scoreboards with names matching `objectives` pattern will be effected by this plugin.  By default this is any objective starting with `global`
