@@ -4,11 +4,9 @@ A plugin created for the play.minermen.net minecraft server.
 It is used to share certain scoreboards between servers
 
 ## Table of Contents
-Installation
-Usage
-Features
-Contributing
-License
+- [Installation](https://github.com/Nathan-Andrews/networkDataSharingMCPlugin/blob/master/README.md#installation)
+- [Features](https://github.com/Nathan-Andrews/networkDataSharingMCPlugin/blob/master/README.md#features)
+- [Behaviors](https://github.com/Nathan-Andrews/networkDataSharingMCPlugin/blob/master/README.md#behaviors)
 
 ## Installation
 - This is meant to be used on paper 1.20.4 servers.
