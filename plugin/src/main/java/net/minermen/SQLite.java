@@ -61,7 +61,7 @@ public class SQLite {
 
         String sql2 = "CREATE TABLE IF NOT EXISTS objectivenames (\n"
                 + " id integer PRIMARY KEY,\n"
-                + " objective text PRIMARY KEY\n"
+                + " objective text NOT NULL\n"
                 + ");";
 
         try (Connection conn = connect();
