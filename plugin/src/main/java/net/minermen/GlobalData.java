@@ -329,14 +329,6 @@ public class GlobalData extends JavaPlugin {
         return Pattern.matches(objectivePattern,objectiveName);
     }
 
-    // private Set<String> getObjectiveNames() {
-    //     return Stream.concat(
-    //         Stream.concat(storedScoreboards.keySet().stream(),
-    //         sharedScoreboards.keySet().stream()),
-    //         currentScoreboards.keySet().stream())
-    //         .collect(Collectors.toSet());
-    // }
-
     private void setPlayerScore(String objectiveName, String playerName, int scoreValue) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
@@ -353,10 +345,6 @@ public class GlobalData extends JavaPlugin {
         }
     }
 
-    // private void setSharedScore(String objective,String playerName, int scoreValue) {
-
-    // }
-
     private void resetPlayerScore(String objectiveName,String playerName) {
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         if (manager != null) {
@@ -372,29 +360,6 @@ public class GlobalData extends JavaPlugin {
             getLogger().warning("ScoreboardManager is null!");
         }
     }
-
-    // private void writeSharedStorage() {
-    //     for (String objectiveName : getObjectiveNames()) {
-    //         ScoreboardStorage storedScoreboard = storedScoreboards.get(objectiveName);
-    //         ScoreboardStorage sharedScoreboard = sharedScoreboards.containsKey(objectiveName) ? sharedScoreboards.get(objectiveName) : new ScoreboardStorage(objectiveName);
-
-    //         if (storedScoreboard == null) {
-    //             SQLite.removeObjective(objectiveName);
-
-    //             continue;
-    //             // scoreboard = new ScoreboardStorage(objectiveName);
-    //         }
-
-    //         for (String player : storedScoreboard.getPlayers()) {
-    //             // board.put(player,storedScoreboard.getPlayerScore(player));
-    //             SQLite.setPlayerScore(objectiveName, player, storedScoreboard.getPlayerScore(player));
-    //         }
-
-    //         for (String player : Sets.difference(storedScoreboard.getPlayers(), sharedScoreboard.getPlayers())) {
-    //             SQLite.resetPlayerScore(objectiveName, player);
-    //         }
-    //     }
-    // }
     
 
     private void saveSharedStorage() {
