@@ -25,7 +25,7 @@ It is used to share certain scoreboards between servers
 - Repeat for all servers you want to connect
 
 ## Features
-- All objectives are stored in a SQLite database.  You can access it with the sqlite command line looks using `sqlite3 database.db`. 
+- All objectives are stored in a SQLite database.  You can access it with the [sqlite command line tools](https://www.sqlite.org/download.html) using `sqlite3 database.db`. 
 
 ## Behaviors
 - Only scoreboards with names matching `objectives` pattern will be effected by this plugin.  By default this is any objective starting with `global`
